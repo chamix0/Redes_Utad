@@ -114,10 +114,6 @@ FVector UTankMovementComponent::GetRollingResistance()
 	return -Velocity.GetSafeNormal() * RollingResistanceCoefficient * NormalForce;
 }
 
-void UTankMovementComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-}
 
 void UTankMovementComponent::UpdateLocationFromVelocity(float DeltaTime)
 {

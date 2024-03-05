@@ -58,13 +58,13 @@ private:
 	UPROPERTY(EditAnywhere)
 	float MinTurningRadius = 5;
 
-	UPROPERTY(Replicated)
+	UPROPERTY()
 	float Throttle;
 
-	UPROPERTY(Replicated)
+	UPROPERTY()
 	float RotationValue;
 
-	UPROPERTY(Replicated)
+	UPROPERTY()
 	FVector Velocity;
 	
 public:
