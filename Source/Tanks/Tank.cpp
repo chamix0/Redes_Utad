@@ -5,15 +5,13 @@
 #include "Components/BoxComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
-#include "InputMappingContext.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInput/Public/EnhancedInputComponent.h"
 #include "InputConfigData.h"
 #include "Engine/World.h"
 #include "DrawDebugHelpers.h"
-#include "TankMovementComponent.h"
-#include "Components/SpotLightComponent.h"
-#include "Net/UnrealNetwork.h"
+#include "./Tank components/TankMovementComponent.h"
+
 
 // Sets default values
 ATank::ATank()
@@ -43,6 +41,8 @@ ATank::ATank()
 	// SpotLight->SetupAttachment(Body);
 
 	TankMovementComponent = CreateDefaultSubobject<UTankMovementComponent>(TEXT("Tank movement component"));
+	TankMovementReplicatorComponent = CreateDefaultSubobject<UTankMovementReplicatorComponent>(
+		TEXT("Tank movement replicator"));
 }
 
 // Called when the game starts or when spawned
@@ -62,33 +62,6 @@ void ATank::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (GetLocalRole() == ROLE_AutonomousProxy)
-	{
-		if (TankMovementComponent != nullptr)
-		{
-			FTankMove Move = TankMovementComponent->CreateMove(DeltaTime);
-			TankMovementComponent->SimulateMove(Move);
-			Server_SendMove(Move);
-		}
-	}
-
-	if (GetLocalRole() == ROLE_Authority && IsLocallyControlled())
-	{
-		if (TankMovementComponent != nullptr)
-		{
-			FTankMove Move = TankMovementComponent->CreateMove(DeltaTime);
-			Server_SendMove(Move);
-		}
-	}
-
-	if (GetLocalRole() == ROLE_SimulatedProxy)
-	{
-		if (TankMovementComponent != nullptr)
-		{
-			TankMovementComponent->SimulateMove(ServerState.LastMove);
-		}
-	}
-
 
 	//DEBUG
 	//DrawDebugString(GetWorld(), FVector(0, 0, -100), GetEnumText(GetLocalRole()), this, FColor::White, DeltaTime);
@@ -103,17 +76,6 @@ void ATank::Tick(float DeltaTime)
 	{
 		ReplicatedTransform = GetActorTransform();
 	}*/
-}
-
-void ATank::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	DOREPLIFETIME(ATank, ServerState)
-	/*DOREPLIFETIME(ATank, ReplicatedTransform);
-	DOREPLIFETIME(ATank, Throttle);
-	DOREPLIFETIME(ATank, RotationValue);
-	DOREPLIFETIME(ATank, Velocity);*/
 }
 
 // Called to bind functionality to input
@@ -163,55 +125,26 @@ void ATank::Rotate(const FInputActionValue& Value)
 	}
 }
 
-//SERVIDOR
-
-void ATank::Server_SendMove_Implementation(FTankMove Move)
-{
-	if (TankMovementComponent != nullptr)
-	{
-		TankMovementComponent->SimulateMove(Move);
-
-		ServerState.LastMove = Move;
-		ServerState.Transform = GetActorTransform();
-		ServerState.Velocity = TankMovementComponent->GetVelocity();
-	}
-}
-
-bool ATank::Server_SendMove_Validate(FTankMove Move)
-{
-	return true;
-}
-
-void ATank::OnRep_ServerState()
-{
-	if (TankMovementComponent != nullptr)
-	{
-		SetActorTransform(ServerState.Transform);
-		TankMovementComponent->SetVelocity(ServerState.Velocity);
-
-		ClearAcknoledgeMoves(ServerState.LastMove);
-		for (const FTankMove& move : UnacknowledgeMoves)
-		{
-			TankMovementComponent->SimulateMove(move);
-		}
-	}
-
-
-	// SpotLight->SetVisibility(ServerState.LastMove.LightOn);
-}
-
-void ATank::ClearAcknoledgeMoves(FTankMove lastMove)
-{
-	TArray<FTankMove> newMoves;
-	for (const FTankMove& Move : UnacknowledgeMoves)
-	{
-		if (Move.Time > lastMove.Time)
-		{
-			newMoves.Add(Move);
-		}
-	}
-	UnacknowledgeMoves = newMoves;
-}
+// //SERVIDOR
+//
+// void ATank::Server_SendMove_Implementation(FTankMove Move)
+// {
+// 	
+// }
+//
+// bool ATank::Server_SendMove_Validate(FTankMove Move)
+// {
+// }
+//
+// void ATank::OnRep_ServerState()
+// {
+// 	
+// }
+//
+// void ATank::ClearAcknoledgeMoves(FTankMove lastMove)
+// {
+// 	
+// }
 
 //void ATank::Server_MoveForward_Implementation(float value)
 //{

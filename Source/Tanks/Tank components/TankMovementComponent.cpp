@@ -3,7 +3,7 @@
 
 #include "TankMovementComponent.h"
 
-#include "TanksGameModeBase.h"
+#include "../TanksGameModeBase.h"
 #include "Net/UnrealNetwork.h"
 
 // Sets default values for this component's properties
