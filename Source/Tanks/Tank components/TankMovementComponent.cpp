@@ -5,6 +5,7 @@
 
 #include "../TanksGameModeBase.h"
 #include "Net/UnrealNetwork.h"
+#include "Tanks/Tank.h"
 
 // Sets default values for this component's properties
 UTankMovementComponent::UTankMovementComponent()
@@ -36,6 +37,7 @@ void UTankMovementComponent::SimulateMove(const FTankMove& Move)
 	UpdateLocationFromVelocity(Move.DeltaTime);
 
 	ApplyRotation(Move.DeltaTime, Move.RotationValue);
+	ApplyTurretRotation(Move.DeltaTime, Move.TurretRotationValue);
 
 	// SpotLight->SetVisibility(Move.LightOn);
 }
@@ -45,6 +47,7 @@ FTankMove UTankMovementComponent::CreateMove(float DeltaTime)
 	FTankMove Move;
 	Move.DeltaTime = DeltaTime;
 	Move.RotationValue = RotationValue;
+	Move.TurretRotationValue = TurretRotationValue;
 	Move.Throttle = Throttle;
 	Move.Time = GetWorld()->TimeSeconds;
 
@@ -102,6 +105,16 @@ void UTankMovementComponent::SetRotationValue(float value)
 	RotationValue = value;
 }
 
+float UTankMovementComponent::GetTurretRotationValue() const
+{
+	return TurretRotationValue;
+}
+
+void UTankMovementComponent::SetTurretRotationValue(float value)
+{
+	TurretRotationValue = value;
+}
+
 FVector UTankMovementComponent::GetAirResistance()
 {
 	return -Velocity.GetSafeNormal() * Velocity.SizeSquared() * DragCoefficient;
@@ -144,4 +157,13 @@ void UTankMovementComponent::ApplyRotation(float DeltaTime, float Value)
 	FQuat RotationDelta(GetOwner()->GetActorUpVector(), FMath::DegreesToRadians(RotationAngle));
 	Velocity = RotationDelta.RotateVector(Velocity);
 	GetOwner()->AddActorWorldRotation(RotationDelta);
+}
+
+void UTankMovementComponent::ApplyTurretRotation(float DeltaTime, float Value)
+{
+	float RotationAngle = MaxDegreesPerSecond * DeltaTime * Value;
+	ATank* tankOwner = Cast<ATank>(GetOwner());
+	UStaticMeshComponent* turret = tankOwner->GetTurret();
+
+	turret->AddRelativeRotation(FRotator(0,RotationAngle,0));
 }

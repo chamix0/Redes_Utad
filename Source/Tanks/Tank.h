@@ -35,14 +35,15 @@ public:
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	UStaticMeshComponent* GetTurret() const;
 
 private:
 	UPROPERTY(VisibleAnywhere)
 	UTankMovementComponent* TankMovementComponent;
-	
+
 	UPROPERTY(VisibleAnywhere)
 	UTankMovementReplicatorComponent* TankMovementReplicatorComponent;
-	
+
 	UPROPERTY(EditAnywhere)
 	class UBoxComponent* BoxCollider;
 
@@ -61,10 +62,9 @@ private:
 
 	//array of moves
 	TArray<FTankMove> UnacknowledgeMoves;
-	
+
 	// void Light();
-
 	void MoveForward(const FInputActionValue& Value);
-
 	void Rotate(const FInputActionValue& Value);
+	void RotateTurret(const FInputActionValue& Value);
 };

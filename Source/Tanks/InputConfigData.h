@@ -23,5 +23,8 @@ public:
 	UInputAction* Rotate;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	UInputAction* RotateTurret;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	UInputAction* Light;
 };

@@ -19,6 +19,9 @@ struct FTankMove
 	float RotationValue;
 
 	UPROPERTY()
+	float TurretRotationValue;
+
+	UPROPERTY()
 	float DeltaTime;
 
 	UPROPERTY()
@@ -65,8 +68,11 @@ private:
 	float RotationValue;
 
 	UPROPERTY()
+	float TurretRotationValue;
+
+	UPROPERTY()
 	FVector Velocity;
-	
+
 public:
 	// Sets default values for this component's properties
 	UTankMovementComponent();
@@ -90,6 +96,8 @@ public:
 	void SetVelocity(FVector value);
 	float GetRotationValue() const;
 	void SetRotationValue(float value);
+	float GetTurretRotationValue() const;
+	void SetTurretRotationValue(float value);
 
 private:
 	FVector GetAirResistance();
@@ -99,4 +107,6 @@ private:
 	void UpdateLocationFromVelocity(float DeltaTime);
 
 	void ApplyRotation(float DeltaTime, float Value);
+	void ApplyTurretRotation(float DeltaTime, float Value);
+
 };

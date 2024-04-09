@@ -97,7 +97,10 @@ void ATank::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 	PlayerEnhancedInput->BindAction(InputConfigData->MoveForward, ETriggerEvent::Completed, this, &ATank::MoveForward);
 	PlayerEnhancedInput->BindAction(InputConfigData->Rotate, ETriggerEvent::Triggered, this, &ATank::Rotate);
 	PlayerEnhancedInput->BindAction(InputConfigData->Rotate, ETriggerEvent::Completed, this, &ATank::Rotate);
-
+	PlayerEnhancedInput->BindAction(InputConfigData->RotateTurret, ETriggerEvent::Triggered, this,
+	                                &ATank::RotateTurret);
+	PlayerEnhancedInput->BindAction(InputConfigData->RotateTurret, ETriggerEvent::Completed, this,
+	                                &ATank::RotateTurret);
 	// PlayerEnhancedInput->BindAction(InputConfigData->Light, ETriggerEvent::Completed, this, &ATank::Light);
 }
 
@@ -105,6 +108,11 @@ void ATank::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 // {
 // 	SpotLight->ToggleVisibility();
 // }
+
+UStaticMeshComponent* ATank::GetTurret() const
+{
+	return Turret;
+}
 
 //CLIENTE LOCAL
 void ATank::MoveForward(const FInputActionValue& Value)
@@ -121,6 +129,15 @@ void ATank::Rotate(const FInputActionValue& Value)
 	if (TankMovementComponent != nullptr)
 	{
 		TankMovementComponent->SetRotationValue(Value.Get<float>());
+		//Server_Rotate(Value.Get<float>());
+	}
+}
+
+void ATank::RotateTurret(const FInputActionValue& Value)
+{
+	if (TankMovementComponent != nullptr)
+	{
+		TankMovementComponent->SetTurretRotationValue(Value.Get<float>());
 		//Server_Rotate(Value.Get<float>());
 	}
 }
