@@ -7,6 +7,11 @@
 #include "Net/UnrealNetwork.h"
 #include "Tanks/Tank.h"
 
+bool FTankMove::IsValid() const
+{
+	return FMath::Abs(Throttle) <= 1 && FMath::Abs(RotationValue) <= 1;
+}
+
 // Sets default values for this component's properties
 UTankMovementComponent::UTankMovementComponent()
 {
@@ -72,7 +77,13 @@ void UTankMovementComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	// ...
+	auto Owner = Cast<APawn>(GetOwner());
+
+	if (GetOwnerRole() == ROLE_AutonomousProxy || (GetOwnerRole() == ROLE_Authority && Owner->IsLocallyControlled()))
+	{
+		LastMove = CreateMove(DeltaTime);
+		SimulateMove(LastMove);
+	}
 }
 
 float UTankMovementComponent::GetThrottle() const

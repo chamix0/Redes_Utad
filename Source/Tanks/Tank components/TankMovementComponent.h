@@ -29,6 +29,8 @@ struct FTankMove
 
 	UPROPERTY()
 	bool LightOn;
+
+	bool IsValid() const;
 };
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
@@ -72,14 +74,13 @@ private:
 
 	UPROPERTY()
 	FVector Velocity;
+	
+	//NEW
+	FTankMove LastMove;
 
 public:
 	// Sets default values for this component's properties
 	UTankMovementComponent();
-
-	void SimulateMove(const FTankMove& Move);
-
-	FTankMove CreateMove(float DeltaTime);
 
 protected:
 	// Called when the game starts
@@ -90,23 +91,27 @@ public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType,
 	                           FActorComponentTickFunction* ThisTickFunction) override;
 
+	void SimulateMove(const FTankMove& Move);
+	FTankMove CreateMove(float DeltaTime);
+	FTankMove GetLastMove() { return LastMove; };
+
+
 	float GetThrottle() const;
 	void SetThrottle(float value);
+
 	FVector GetVelocity() const;
 	void SetVelocity(FVector value);
+
 	float GetRotationValue() const;
 	void SetRotationValue(float value);
+
 	float GetTurretRotationValue() const;
 	void SetTurretRotationValue(float value);
 
 private:
 	FVector GetAirResistance();
-
 	FVector GetRollingResistance();
-
 	void UpdateLocationFromVelocity(float DeltaTime);
-
 	void ApplyRotation(float DeltaTime, float Value);
 	void ApplyTurretRotation(float DeltaTime, float Value);
-
 };

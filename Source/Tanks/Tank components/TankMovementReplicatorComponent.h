@@ -32,6 +32,8 @@ private:
 	FTankState ServerState;
 	UTankMovementComponent* TankMovementComponent;
 	TArray<FTankMove> UnacknowledgeMoves;
+	UTankMovementComponent* MovementComponent;
+	float ClientSimulatedTime;
 
 public:
 	// Sets default values for this component's properties
@@ -47,12 +49,16 @@ public:
 	                           FActorComponentTickFunction* ThisTickFunction) override;
 
 private:
+	void ClearAcknoledgeMoves(FTankMove lastMove);
+
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_SendMove(FTankMove Move);
-
-
 	UFUNCTION()
 	void OnRep_ServerState();
+	
+	void AutonomousProxy_OnRep_ServerState();
+	void SimulatedProxy_OnRep_ServerState();
+	void UpdateServerState(const FTankMove& Move);
+	void ClientTick(float DeltaTime);
 
-	void ClearAcknoledgeMoves(FTankMove lastMove);
 };

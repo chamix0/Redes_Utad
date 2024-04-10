@@ -12,8 +12,6 @@ UTankMovementReplicatorComponent::UTankMovementReplicatorComponent()
 	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = true;
 	SetIsReplicated(true);
-
-	// ...
 }
 
 
@@ -31,34 +29,37 @@ void UTankMovementReplicatorComponent::TickComponent(float DeltaTime, ELevelTick
                                                      FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	if (GetOwner()->GetLocalRole() == ROLE_AutonomousProxy)
+
+	if (MovementComponent == nullptr) return;
+
+	FTankMove LastMove = MovementComponent->GetLastMove();
+
+	if (GetOwnerRole() == ROLE_AutonomousProxy)
 	{
-		if (TankMovementComponent != nullptr)
-		{
-			FTankMove Move = TankMovementComponent->CreateMove(DeltaTime);
-			TankMovementComponent->SimulateMove(Move);
-			Server_SendMove(Move);
-		}
-	}
-	APawn* owner = Cast<APawn>(GetOwner());
-	if (GetOwner()->GetLocalRole() == ROLE_Authority && owner != nullptr && owner->IsLocallyControlled())
-	{
-		if (TankMovementComponent != nullptr)
-		{
-			FTankMove Move = TankMovementComponent->CreateMove(DeltaTime);
-			Server_SendMove(Move);
-		}
+		//MOVIDO A Movement component
+		/*FTankMove Move = MovementComponent->CreateMove(DeltaTime);
+		MovementComponent->SimulateMove(Move);*/
+
+		UnacknowledgeMoves.Add(LastMove);
+		Server_SendMove(LastMove);
 	}
 
-	if (GetOwner()->GetLocalRole() == ROLE_SimulatedProxy)
+	auto Owner = Cast<APawn>(GetOwner());
+
+	if (GetOwnerRole() == ROLE_Authority && Owner->IsLocallyControlled())
 	{
-		if (TankMovementComponent != nullptr)
-		{
-			TankMovementComponent->SimulateMove(ServerState.LastMove);
-		}
+		/*FTankMove Move = MovementComponent->CreateMove(DeltaTime);
+		Server_SendMove(Move);*/
+
+		UpdateServerState(LastMove);
 	}
 
-	// ...
+	if (GetOwnerRole() == ROLE_SimulatedProxy)
+	{
+		//MovementComponent->SimulateMove(ServerState.LastMove);
+
+		ClientTick(DeltaTime);
+	}
 }
 
 void UTankMovementReplicatorComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -66,10 +67,6 @@ void UTankMovementReplicatorComponent::GetLifetimeReplicatedProps(TArray<FLifeti
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(UTankMovementReplicatorComponent, ServerState)
-	/*DOREPLIFETIME(ATank, ReplicatedTransform);
-	DOREPLIFETIME(ATank, Throttle);
-	DOREPLIFETIME(ATank, RotationValue);
-	DOREPLIFETIME(ATank, Velocity);*/
 }
 
 void UTankMovementReplicatorComponent::OnRep_ServerState()
@@ -90,6 +87,74 @@ void UTankMovementReplicatorComponent::OnRep_ServerState()
 	// SpotLight->SetVisibility(ServerState.LastMove.LightOn);
 }
 
+void UTankMovementReplicatorComponent::AutonomousProxy_OnRep_ServerState()
+{
+	if (MovementComponent == nullptr) return;
+
+	GetOwner()->SetActorTransform(ServerState.Transform);
+	MovementComponent->SetVelocity(ServerState.Velocity);
+
+	ClearAcknoledgeMoves(ServerState.LastMove);
+
+	for (const FTankMove& Move : UnacknowledgeMoves)
+	{
+		MovementComponent->SimulateMove(Move);
+	}
+}
+
+void UTankMovementReplicatorComponent::SimulatedProxy_OnRep_ServerState()
+{
+	if (MovementComponent == nullptr) return;
+
+	ClientTimeBetweenLastUpdates = ClientTimeSinceUpdate;
+	ClientTimeSinceUpdate = 0;
+
+	ClientStartTransform = GetOwner()->GetActorTransform();
+
+	ClientStartVelocity = MovementComponent->GetVelocity();
+}
+
+void UTankMovementReplicatorComponent::UpdateServerState(const FTankMove& Move)
+{
+	ServerState.LastMove = Move;
+	ServerState.Transform = GetOwner()->GetActorTransform();
+	ServerState.Velocity = MovementComponent->GetVelocity();
+}
+
+void UTankMovementReplicatorComponent::ClientTick(float DeltaTime)
+{
+	ClientTimeSinceUpdate += DeltaTime;
+
+	if (ClientTimeBetweenLastUpdates < KINDA_SMALL_NUMBER) return;
+	if (MovementComponent == nullptr) return;
+
+	//LERP MOVIMIENTO
+	FVector TargetLocation = ServerState.Transform.GetLocation();
+	FVector StartLocation = ClientStartTransform.GetLocation();
+	float LerpRatio = ClientTimeSinceUpdate / ClientTimeBetweenLastUpdates;
+
+	//FVector NewLocation = FMath::LerpStable(StartLocation, TargetLocation, LerpRatio);
+
+	float VelocityToDerivative = ClientTimeBetweenLastUpdates * 100;
+	FVector StartDerivative = ClientStartVelocity * VelocityToDerivative;
+	FVector TargetDerivative = ServerState.Velocity * VelocityToDerivative;
+
+	FVector NewLocation = FMath::CubicInterp(StartLocation, StartDerivative, TargetLocation, TargetDerivative, LerpRatio);
+
+	GetOwner()->SetActorLocation(NewLocation);
+
+	FVector NewDerivative = FMath::CubicInterpDerivative(StartLocation, StartDerivative, TargetLocation, TargetDerivative, LerpRatio);
+	FVector NewVelocity = NewDerivative / VelocityToDerivative;
+	MovementComponent->SetVelocity(NewVelocity);
+
+	//LERP ROTATION
+	FQuat TargetRotation = ServerState.Transform.GetRotation();
+	FQuat StartRotation = ClientStartTransform.GetRotation();
+	FQuat NewRotation = FQuat::Slerp(StartRotation, TargetRotation, LerpRatio);
+
+	GetOwner()->SetActorRotation(NewRotation);
+}
+
 void UTankMovementReplicatorComponent::ClearAcknoledgeMoves(FTankMove lastMove)
 {
 	TArray<FTankMove> newMoves;
@@ -105,17 +170,36 @@ void UTankMovementReplicatorComponent::ClearAcknoledgeMoves(FTankMove lastMove)
 
 void UTankMovementReplicatorComponent::Server_SendMove_Implementation(FTankMove Move)
 {
-	if (TankMovementComponent != nullptr)
-	{
-		TankMovementComponent->SimulateMove(Move);
+	if (MovementComponent == nullptr) return;
 
-		ServerState.LastMove = Move;
-		ServerState.Transform = GetOwner()->GetActorTransform();
-		ServerState.Velocity = TankMovementComponent->GetVelocity();
-	}
+	ClientSimulatedTime += Move.DeltaTime;
+
+	MovementComponent->SimulateMove(Move);
+
+	//NEW
+	/*ServerState.LastMove = Move;
+	ServerState.Transform = GetOwner()->GetActorTransform();
+	ServerState.Velocity = MovementComponent->GetVelocity();*/
+
+	UpdateServerState(Move);
 }
 
 bool UTankMovementReplicatorComponent::Server_SendMove_Validate(FTankMove Move)
 {
+	float Time = ClientSimulatedTime + Move.DeltaTime;
+	bool ClientNormalSpeed = Time <= GetWorld()->TimeSeconds;
+
+	if (!ClientNormalSpeed)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Client is running too fast!"));
+		return false;
+	}
+
+	if (!Move.IsValid())
+	{
+		UE_LOG(LogTemp, Error, TEXT("Received invalid move!"));
+		return false;
+	}
+
 	return true;
 }

@@ -54,6 +54,7 @@ void ATank::BeginPlay()
 	{
 		NetUpdateFrequency = 1;
 	}
+	SetReplicateMovement(false);
 }
 
 
